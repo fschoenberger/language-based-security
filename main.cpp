@@ -1,5 +1,8 @@
 #include <ctype.h>
+#include <fstream>
 #include <getopt.h>
+#include <iostream>
+
 #include "all.h"
 #include "config.h"
 
@@ -24,7 +27,7 @@ extern Target T_arm64;
 extern Target T_arm64_apple;
 extern Target T_rv64;
 
-static Target* tlist[] = { &T_amd64_sysv, &T_amd64_apple, &T_arm64, &T_arm64_apple, &T_rv64, 0 };
+static Target* tlist[] = { &T_amd64_sysv, &T_amd64_apple, &T_arm64, &T_arm64_apple, &T_rv64, nullptr };
 static FILE* outf;
 static int dbg;
 
@@ -33,7 +36,7 @@ static void data(Dat* d)
     if (dbg)
         return;
     emitdat(d, outf);
-    if (d->type == DEnd) {
+    if (d->type == Dat::DEnd) {
         fputs("/* end data */\n\n", outf);
         freeall();
     }
@@ -100,16 +103,16 @@ static void func(Fn* fn)
 
 static void dbgfile(char* fn) { emitdbgfile(fn, outf); }
 
-int main(int ac, char* av[])
+int main(int argc, char** argv)
 {
     Target** t;
-    FILE *inf, *hf;
-    char *f, *sep;
+    FILE *inf;
+    char*sep;
     int c;
 
     T = Deftgt;
     outf = stdout;
-    while ((c = getopt(ac, av, "hd:o:t:")) != -1)
+    while ((c = getopt(argc, argv, "hd:o:t:")) != -1)
         switch (c) {
         case 'd':
             for (; *optarg; optarg++)
@@ -145,8 +148,8 @@ int main(int ac, char* av[])
             break;
         case 'h':
         default:
-            hf = c != 'h' ? stderr : stdout;
-            fprintf(hf, "%s [OPTIONS] {file.ssa, -}\n", av[0]);
+            FILE* hf = c != 'h' ? stderr : stdout;
+            fprintf(hf, "%s [OPTIONS] {file.ssa, -}\n", argv[0]);
             fprintf(hf, "\t%-11s prints this help\n", "-h");
             fprintf(hf, "\t%-11s output to file\n", "-o file");
             fprintf(hf, "\t%-11s generate for a target among:\n", "-t <target>");
@@ -162,7 +165,7 @@ int main(int ac, char* av[])
         }
 
     do {
-        f = av[optind];
+        char* f = argv[optind];
         if (!f || strcmp(f, "-") == 0) {
             inf = stdin;
             f = "-";
@@ -175,7 +178,7 @@ int main(int ac, char* av[])
         }
         parse(inf, f, dbgfile, data, func);
         fclose(inf);
-    } while (++optind < ac);
+    } while (++optind < argc);
 
     if (!dbg)
         T.emitfin(outf);

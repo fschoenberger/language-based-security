@@ -1164,7 +1164,7 @@ static int parselnk(Lnk* lnk)
     for (haslnk = 0;; haslnk = 1)
         switch ((t = nextnl())) {
         case Texport:
-            lnk->export = 1;
+            lnk->export_declaration = 1;
             break;
         case Tthread:
             lnk->thread = 1;

@@ -43,7 +43,7 @@ void emitlnk(char* n, Lnk* l, int s, FILE* f)
     fputc('\n', f);
     if (l->align)
         fprintf(f, ".balign %d\n", l->align);
-    if (l->export)
+    if (l->export_declaration)
         fprintf(f, ".globl %s%s\n", pfx, n);
     fprintf(f, "%s%s%s:\n", pfx, n, sfx);
 }
