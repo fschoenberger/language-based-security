@@ -1,0 +1,20 @@
+BasedOnStyle: WebKit
+
+ColumnLimit: 160
+
+AlwaysBreakTemplateDeclarations: Yes
+IndentRequiresClause: false
+#RequiresExpressionIndentation: OuterScope
+
+IncludeCategories:
+  - Regex: '^"(\.\.\/)*prologue.hpp"$' # Prologue comes first in headers
+    Priority: -2
+  # Now we have the file's main header
+  - Regex: '^(<|"(gtest|gmock)/)' # GTest/ GMock headers should come next
+    Priority: 1
+  - Regex: '^<[[:alnum:]]+>$' # Now, we do STL headers
+    Priority: 2
+  - Regex: '^<.*>$' # Now, we do all external headers
+    Priority: 3
+  - Regex: '^.*$' # And finally, all other headers
+    Priority: 4
