@@ -3,8 +3,8 @@ BasedOnStyle: WebKit
 ColumnLimit: 160
 
 AlwaysBreakTemplateDeclarations: Yes
-IndentRequiresClause: false
-#RequiresExpressionIndentation: OuterScope
+# IndentRequiresClause: false
+# RequiresExpressionIndentation: OuterScope
 
 IncludeCategories:
   - Regex: '^"(\.\.\/)*prologue.hpp"$' # Prologue comes first in headers
