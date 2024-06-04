@@ -24,7 +24,7 @@ TARGET = parser
 all: $(TARGET)
 
 # Build the final executable
-$(TARGET): $(LEXER_CXX) $(PARSER_CXX) driver.cpp
+$(TARGET): $(LEXER_CXX) $(PARSER_CXX) driver.cpp ast.hpp
 	$(CXX) $(CXXFLAGS) -o $(TARGET) $(LEXER_CXX) $(PARSER_CXX) driver.cpp $(LDFLAGS)
 
 # Generate lexer from Flex

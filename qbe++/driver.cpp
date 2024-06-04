@@ -7,9 +7,8 @@
 #include <string_view>
 
 
-int Driver::parse(const char* filename)
+int Driver::parse(const std::string& filename)
 {
-
     std::ifstream file(filename);
     if (!file)
     {

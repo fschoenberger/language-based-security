@@ -28,6 +28,8 @@
     #include <cstdint>
     #include <stdexcept>
 
+    #include "ast.hpp"
+
     class Driver;
     class Lexer;
     
@@ -125,15 +127,15 @@
     };
 
     struct BinaryToken {
-        // MUL, ADD, ...
+        enum class Operation {
+            kAdd, kAnd, kDiv, kMul, kNeg, kOr, KRem, kSar, kShl, kShr, kSub, kUdiv, kUrem, KXor, kNone = -1
+        } op = Operation::kNone;
     };
 
     struct IdentifierToken {
-        /* enum class Sigil: int8_t {
-            kPercent, kDollar, kAt, kColon, kNone = -1
-        } sigil = Sigil::kNone; */
         std::string name;
     };
+
 }
 
 %parse-param { Lexer& lexer }
@@ -161,8 +163,6 @@
 %token <CompareToken> COMPARE "COMPARE"
 %token <ConversionToken> CONVERSION "CONVERSION"
 %token <BinaryToken> BINARY "BINARY"
-
-%token BLIT "BLIT"
 
 %token 
     EXPORT "export"
@@ -197,6 +197,7 @@
     CALL "call"
     CAST "cast"
     COPY "copy"
+    BLIT "BLIT"
 //------------------------
     W "w"
     L "l"
@@ -213,6 +214,8 @@
 //------------------------
     VASTART "vastart"
     VAARG "vaarg"
+
+/* %nterm <ast::Root> root */
 
 %%
 root: YYEOF | definition_list YYEOF;
@@ -256,13 +259,13 @@ arg_list: %empty | arg_list COMMA arg | arg;
 arg: abi_type val | ENV val | ELLIPSIS;
 
 instruction_list: instruction_list instruction | instruction;
-instruction: PERCENT IDENTIFIER EQUALS abi_type instruction_tail
+instruction: PERCENT IDENTIFIER EQUALS abi_type expression
     | STORE val COMMA val
     | call
     | BLIT val COMMA val COMMA NUMBER
     | VASTART val;
 
-instruction_tail: LOAD val
+expression: LOAD val
     | ALLOC NUMBER
     | COMPARE val COMMA val
     | COPY val 
@@ -317,18 +320,4 @@ data_item: DOLLAR IDENTIFIER | DOLLAR IDENTIFIER PLUS NUMBER | STRING_LITERAL | 
 void yy::Parser::error(const location_type& l, const std::string& m)
 {
 	std::cerr << l << ": " << m << "\n";
-}
-
-int main(int, char** argv)
-{
-    /* yydebug = 1; */
-
-	Driver drv{};
-	int n = drv.parse(argv[1]);
-	/* if (n != 0)
-		std::cout << "fail\n";
-	else
-		std::cout << "ok\n"; */
-
-	return n;
 }

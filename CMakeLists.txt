@@ -23,10 +23,20 @@ set(ARM64_SRC arm64/targ.c arm64/abi.c arm64/isel.c arm64/emit.c)
 set(RV64_SRC rv64/targ.c rv64/abi.c rv64/isel.c rv64/emit.c)
 set(SRC_ALL ${COMM_SRC} ${AMD64_SRC} ${ARM64_SRC} ${RV64_SRC})
 
+find_package(FLEX REQUIRED)
+find_package(BISON REQUIRED)
+
 # Add executable target
-add_executable(qbe ${SRC_ALL})
+add_executable(qbe ${SRC_ALL} )
+set_property(TARGET qbe PROPERTY CXX_STANDARD 23)
+set_property(TARGET qbe PROPERTY CXX_STANDARD_REQUIRED True)
+set_property(TARGET qbe PROPERTY CXX_EXTENSIONS OFF)
+set_property(TARGET qbe PROPERTY C_STANDARD 11)
+set_property(TARGET qbe PROPERTY C_STANDARD_REQUIRED True)
+set_property(TARGET qbe PROPERTY C_EXTENSIONS OFF)
 
 add_subdirectory(minic)
+add_subdirectory(qbe++)
 
 # Add tests
 #enable_testing()

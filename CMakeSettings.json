@@ -12,7 +12,7 @@
       "ctestCommandArgs": "",
       "inheritEnvironments": [ "linux_clang_x64" ],
       "wslPath": "${defaultWSLPath}",
-      "variables": []
+      "addressSanitizerEnabled": true
     }
   ]
 }

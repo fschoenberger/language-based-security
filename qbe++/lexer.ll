@@ -146,39 +146,39 @@ newline		(\n)
 "vaarg" return Token::VAARG;
 
 store(d|s|l|w|h|b) {
-	yylval->emplace<StoreToken>(/*yytext[5]*/);
+	yylval->emplace<StoreToken>(yytext[5]);
 	return Token::STORE; 
 }
 
 load {
-	yylval->emplace<LoadToken>(/*"d"*/); //FIXME
+	yylval->emplace<LoadToken>("d"); //FIXME
 	return Token::LOAD; 
 }
 
 load(d|s|l|w|h|b|sw|uw|sh|uh|sb|ub) { 
-	yylval->emplace<LoadToken>(/*yytext + 4*/); 
+	yylval->emplace<LoadToken>(yytext + 4); 
 	return Token::LOAD; 
 }
 
 "blit" return Token::BLIT;
 
 alloc(4|8|16) { 
-	yylval->emplace<AllocToken>(/*static_cast<int8_t>(std::stoi(yytext + 5))*/); 
+	yylval->emplace<AllocToken>(static_cast<int8_t>(std::stoi(yytext + 5))); 
 	return Token::ALLOC; 
 }
 
 c(sle|slt|sge|sgt|ule|ult|uge|ugt)(w|l|s|d|q|t|h|f) {
-	yylval->emplace<CompareToken>(/*std::string{yytext + 1, yytext + 4}, yytext + 4*/);
+	yylval->emplace<CompareToken>(std::string{yytext + 1, yytext + 4}, yytext + 4);
 	return Token::COMPARE; 
 }
 
 c(eq|ne|le|lt|ge|gt|uo)(w|l|s|d|q|t|h|f) {
-	yylval->emplace<CompareToken>(/*std::string{yytext + 1, yytext + 3}, yytext + 3*/);
+	yylval->emplace<CompareToken>(std::string{yytext + 1, yytext + 3}, yytext + 3);
 	return Token::COMPARE; 
 }
 
 co(w|l|s|d|q|t|h|f) {
-	yylval->emplace<CompareToken>(/*"o", yytext + 2*/);
+	yylval->emplace<CompareToken>("o", yytext + 2);
 	return Token::COMPARE; 
 }
 
@@ -193,21 +193,21 @@ co(w|l|s|d|q|t|h|f) {
 }
 
 [-]?[0-9]+ {
-	yylval->emplace<uint64_t>(/*std::stoll(yytext)*/);
+	yylval->emplace<uint64_t>(std::stoll(yytext));
 	return Token::NUMBER;
 }
 
 (s_|d_)[-]?[0-9]*(\.[0-9]+)? {
 	if(yytext[0] == 's' || yytext[0] == 'd')
-		yylval->emplace<double>(/*std::stod(yytext + 2)*/);
+		yylval->emplace<double>(std::stod(yytext + 2));
 	else
-		yylval->emplace<double>(/*std::stod(yytext)*/);
+		yylval->emplace<double>(std::stod(yytext));
 
 	return Token::FLOAT;
 }
 
 \"[^\"]*\" {
-	yylval->emplace<std::string>(/*yytext + 1, yyleng - 2*/);
+	yylval->emplace<std::string>(yytext + 1, yyleng - 2);
 	return Token::STRING_LITERAL;
 }
 
