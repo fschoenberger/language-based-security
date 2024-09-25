@@ -39,4 +39,4 @@ add_subdirectory(minic)
 #  ARCHIVE DESTINATION lib)
 
 # Set CMake module path for custom Find scripts
-set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+# set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
