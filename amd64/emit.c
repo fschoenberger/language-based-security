@@ -569,80 +569,99 @@ framesz(Fn *fn)
 void
 amd64_emitfn(Fn *fn, FILE *f)
 {
+	// Array to map comparison types to their corresponding assembly mnemonics.
 	static char *ctoa[] = {
 	#define X(c, s) [c] = s,
 		CMP(X)
 	#undef X
 	};
-	static int id0;
-	Blk *b, *s;
-	Ins *i, itmp;
-	int *r, c, o, n, lbl;
-	uint64_t fs;
+	static int id0;  // Counter for basic block labels
+	Blk *b, *s;  // Pointers to basic blocks
+	Ins *i, itmp;  // Instruction pointers and a temporary instruction
+	int *r, c, o, n, lbl;  // Registers, comparison type, offsets, and label flag
+	uint64_t fs;  // Frame size
 
+	// Emit function name and linkage
 	emitfnlnk(fn->name, &fn->lnk, f);
+	
+	// Function prologue: save base pointer and set stack pointer
 	fputs("\tpushq %rbp\n\tmovq %rsp, %rbp\n", f);
+	
+	// Get the size of the stack frame and adjust the stack pointer if necessary
 	fs = framesz(fn);
 	if (fs)
 		fprintf(f, "\tsubq $%"PRIu64", %%rsp\n", fs);
+
+	// If the function uses variadic arguments, save the registers used for argument passing
 	if (fn->vararg) {
-		o = -176;
+		o = -176;  // Initial offset for saved registers
 		for (r=amd64_sysv_rsave; r<&amd64_sysv_rsave[6]; r++, o+=8)
 			fprintf(f, "\tmovq %%%s, %d(%%rbp)\n", rname[*r][0], o);
 		for (n=0; n<8; ++n, o+=16)
 			fprintf(f, "\tmovaps %%xmm%d, %d(%%rbp)\n", n, o);
 	}
+
+	// Save callee-saved registers if necessary
 	for (r=amd64_sysv_rclob; r<&amd64_sysv_rclob[NCLR]; r++)
 		if (fn->reg & BIT(*r)) {
 			itmp.arg[0] = TMP(*r);
 			emitf("pushq %L0", &itmp, fn, f);
-			fs += 8;
+			fs += 8;  // Increase frame size by 8 bytes for each saved register
 		}
 
+	// Emit instructions for each basic block in the function
 	for (lbl=0, b=fn->start; b; b=b->link) {
+		// Emit label for the block if necessary
 		if (lbl || b->npred > 1)
 			fprintf(f, "%sbb%d:\n", T.asloc, id0+b->id);
+
+		// Emit each instruction in the block
 		for (i=b->ins; i!=&b->ins[b->nins]; i++)
 			emitins(*i, fn, f);
-		lbl = 1;
+
+		lbl = 1;  // Set label flag for next block
+
+		// Emit jump or control flow instructions at the end of the block
 		switch (b->jmp.type) {
-		case Jhlt:
+		case Jhlt:  // Halt the CPU
 			fprintf(f, "\tud2\n");
 			break;
-		case Jret0:
+		case Jret0:  // Return from the function
 			if (fn->dynalloc)
 				fprintf(f,
 					"\tmovq %%rbp, %%rsp\n"
 					"\tsubq $%"PRIu64", %%rsp\n",
 					fs
 				);
+			// Restore callee-saved registers
 			for (r=&amd64_sysv_rclob[NCLR]; r>amd64_sysv_rclob;)
 				if (fn->reg & BIT(*--r)) {
 					itmp.arg[0] = TMP(*r);
 					emitf("popq %L0", &itmp, fn, f);
 				}
+			// Function epilogue: restore base pointer and return
 			fprintf(f,
 				"\tleave\n"
 				"\tret\n"
 			);
 			break;
-		case Jjmp:
+		case Jjmp:  // Unconditional jump to another block
 		Jmp:
-			if (b->s1 != b->link)
+			if (b->s1 != b->link)  // Jump if target block is not the next one
 				fprintf(f, "\tjmp %sbb%d\n",
 					T.asloc, id0+b->s1->id);
 			else
-				lbl = 0;
+				lbl = 0;  // No need for a label if falling through
 			break;
-		default:
+		default:  // Conditional jump
 			c = b->jmp.type - Jjf;
-			if (0 <= c && c <= NCmp) {
-				if (b->link == b->s2) {
+			if (0 <= c && c <= NCmp) {  // Handle comparison-based jumps
+				if (b->link == b->s2) {  // Swap successors if necessary
 					s = b->s1;
 					b->s1 = b->s2;
 					b->s2 = s;
 				} else
-					c = cmpneg(c);
+					c = cmpneg(c);  // Negate comparison if needed
 				fprintf(f, "\tj%s %sbb%d\n", ctoa[c],
 					T.asloc, id0+b->s2->id);
 				goto Jmp;
@@ -650,7 +669,10 @@ amd64_emitfn(Fn *fn, FILE *f)
 			die("unhandled jump %d", b->jmp.type);
 		}
 	}
+	// Update the block ID counter
 	id0 += fn->nblk;
+
+	// Emit function epilogue for non-Apple targets
 	if (!T.apple)
 		elf_emitfnfin(fn->name, f);
 }
