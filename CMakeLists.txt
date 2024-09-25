@@ -17,7 +17,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 
-set(COMM_SRC main.c util.c parse.c abi.c cfg.c mem.c ssa.c alias.c load.c copy.c fold.c simpl.c live.c spill.c rega.c emit.c)
+set(COMM_SRC main.c util.c parse.c abi.c cfg.c mem.c ssa.c alias.c load.c copy.c fold.c simpl.c live.c spill.c rega.c emit.c convenience.cpp)
 set(AMD64_SRC amd64/targ.c amd64/sysv.c amd64/isel.c amd64/emit.c)
 set(ARM64_SRC arm64/targ.c arm64/abi.c arm64/isel.c arm64/emit.c)
 set(RV64_SRC rv64/targ.c rv64/abi.c rv64/isel.c rv64/emit.c)
