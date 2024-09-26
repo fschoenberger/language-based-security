@@ -323,6 +323,8 @@ static void emitins(Ins i, Fn* fn, FILE* f)
     Con* con;
     char* sym;
 
+	fprintf(f, "\t%s\n", get_random_nop_instruction_sequence());
+    
     switch (i.op) {
     default:
     Table:
@@ -502,13 +504,12 @@ void amd64_emitfn(Fn* fn, FILE* f)
 #undef X
     };
     static int id0; // Counter for basic block labels
-	static int retLabel ; // Very ugly, but whatever.
+    static int retLabel; // Very ugly, but whatever.
 
     Blk *b, *s; // Pointers to basic blocks
     Ins *i, itmp; // Instruction pointers and a temporary instruction
     int *r, c, o, n, lbl; // Registers, comparison type, offsets, and label flag
     uint64_t fs; // Frame size
-	
 
     // Emit function name and linkage
     emitfnlnk(fn->name, &fn->lnk, f);
@@ -521,10 +522,10 @@ void amd64_emitfn(Fn* fn, FILE* f)
 
     // =========================== <STACK CANARY> ===========================
 
-	// This took me way too long: On AMD SysV, the stack pointer needs to be 16 byte aligned.
-	// Our stack canary is 8 bytes (64 bit), so we just need to add 16 bytes to the frame size.
-	// This wastes space in the worst case, but I also just don't care anymore.
-	fs += 16;
+    // This took me way too long: On AMD SysV, the stack pointer needs to be 16 byte aligned.
+    // Our stack canary is 8 bytes (64 bit), so we just need to add 16 bytes to the frame size.
+    // This wastes space in the worst case, but I also just don't care anymore.
+    fs += 16;
 
     if (fs)
         fprintf(f, "\tsubq $%" PRIu64 ", %%rsp\n", fs);
@@ -532,7 +533,7 @@ void amd64_emitfn(Fn* fn, FILE* f)
     // We use a 64 bit canary value
     // The canary is randomly calculated for each function prologue and not constant over multiple invocations of the compiler.
     const uint64_t canary = get_random_u64();
-	fprintf(f, "\tmovq $%" PRIu64 ", %%rax\n", canary); // Load canary value into RAX.
+    fprintf(f, "\tmovq $%" PRIu64 ", %%rax\n", canary); // Load canary value into RAX.
     fprintf(f, "\tmovq %%rax, -8(%%rbp)\n"); // Store the canary at -8(%rbp), right below the saved %rbp.
 
     //  =========================== </STACK CANARY> ===========================
@@ -590,14 +591,15 @@ void amd64_emitfn(Fn* fn, FILE* f)
             fprintf(f, "\tmovq $%" PRIu64 ", %%rcx # Load the our know canary value int rcx\n", canary);
             fprintf(f, "\tsubq %%rcx, %%rdx # Compare the canary value\n");
             fprintf(f, "\tje .L%d\n", retLabel);
-			fprintf(f, "\tcall report_canary_violation # If the canary changed, report it\n");
+            fprintf(f, "\tcall report_canary_violation # If the canary changed, report it\n");
             // ======================= </STACK CANARY> =======================
 
             // Function epilogue: restore base pointer and return
             fprintf(f,
-				".L%d:\n"
+                ".L%d:\n"
                 "\tleave\n"
-                "\tret\n", retLabel++);
+                "\tret\n",
+                retLabel++);
 
             break;
         case Jjmp: // Unconditional jump to another block
