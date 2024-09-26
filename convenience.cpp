@@ -50,6 +50,11 @@ template <typename T>
 class ProbabilityCollection final {
 public:
     ProbabilityCollection() = default;
+    ProbabilityCollection(const ProbabilityCollection&) = default;
+    ProbabilityCollection(ProbabilityCollection&&) = default;
+    ProbabilityCollection& operator=(const ProbabilityCollection&) = default;
+    ProbabilityCollection& operator=(ProbabilityCollection&&) = default;
+    ~ProbabilityCollection() = default;
 
     ProbabilityCollection(std::initializer_list<std::pair<T, int>> init_list)
     {
