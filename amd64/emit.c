@@ -520,7 +520,6 @@ void amd64_emitfn(Fn* fn, FILE* f)
     fs = framesz(fn);
 
     // =========================== <STACK CANARY> ===========================
-    //{
 
 	// This took me way too long: On AMD SysV, the stack pointer needs to be 16 byte aligned.
 	// Our stack canary is 8 bytes (64 bit), so we just need to add 16 bytes to the frame size.
@@ -529,7 +528,6 @@ void amd64_emitfn(Fn* fn, FILE* f)
 
     if (fs)
         fprintf(f, "\tsubq $%" PRIu64 ", %%rsp\n", fs);
-
 
     // We use a 64 bit canary value
     // The canary is randomly calculated for each function prologue and not constant over multiple invocations of the compiler.

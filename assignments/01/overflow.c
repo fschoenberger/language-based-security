@@ -3,8 +3,7 @@ int printf();
 square(int a) {
     int buf;
 
-    *(&buf + 1) = 42;
-    *(&buf - 1) = 64;
+    *(&buf - 1) = 42;
 
     return a * a;
 }
