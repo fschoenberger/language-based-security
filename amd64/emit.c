@@ -61,25 +61,64 @@ static struct {
     short op;
     short cls;
     char* fmt;
-} omap[] = { { Oadd, Ka, "+add%k %1, %=" }, { Osub, Ka, "-sub%k %1, %=" }, { Oand, Ki, "+and%k %1, %=" }, { Oor, Ki, "+or%k %1, %=" },
-    { Oxor, Ki, "+xor%k %1, %=" }, { Osar, Ki, "-sar%k %B1, %=" }, { Oshr, Ki, "-shr%k %B1, %=" }, { Oshl, Ki, "-shl%k %B1, %=" },
-    { Omul, Ki, "+imul%k %1, %=" }, { Omul, Ks, "+mulss %1, %=" }, { Omul, Kd, "+mulsd %1, %=" }, { Odiv, Ka, "-div%k %1, %=" },
-    { Ostorel, Ka, "movq %L0, %M1" }, { Ostorew, Ka, "movl %W0, %M1" }, { Ostoreh, Ka, "movw %H0, %M1" }, { Ostoreb, Ka, "movb %B0, %M1" },
-    { Ostores, Ka, "movss %S0, %M1" }, { Ostored, Ka, "movsd %D0, %M1" }, { Oload, Ka, "mov%k %M0, %=" }, { Oloadsw, Kl, "movslq %M0, %L=" },
-    { Oloadsw, Kw, "movl %M0, %W=" }, { Oloaduw, Ki, "movl %M0, %W=" }, { Oloadsh, Ki, "movsw%k %M0, %=" }, { Oloaduh, Ki, "movzw%k %M0, %=" },
-    { Oloadsb, Ki, "movsb%k %M0, %=" }, { Oloadub, Ki, "movzb%k %M0, %=" }, { Oextsw, Kl, "movslq %W0, %L=" }, { Oextuw, Kl, "movl %W0, %W=" },
-    { Oextsh, Ki, "movsw%k %H0, %=" }, { Oextuh, Ki, "movzw%k %H0, %=" }, { Oextsb, Ki, "movsb%k %B0, %=" }, { Oextub, Ki, "movzb%k %B0, %=" },
+} omap[] = {
+    { Oadd, Ka, "+add%k %1, %=" },
+    { Osub, Ka, "-sub%k %1, %=" },
+    { Oand, Ki, "+and%k %1, %=" },
+    { Oor, Ki, "+or%k %1, %=" },
+    { Oxor, Ki, "+xor%k %1, %=" },
+    { Osar, Ki, "-sar%k %B1, %=" },
+    { Oshr, Ki, "-shr%k %B1, %=" },
+    { Oshl, Ki, "-shl%k %B1, %=" },
+    { Omul, Ki, "+imul%k %1, %=" },
+    { Omul, Ks, "+mulss %1, %=" },
+    { Omul, Kd, "+mulsd %1, %=" },
+    { Odiv, Ka, "-div%k %1, %=" },
+    { Ostorel, Ka, "movq %L0, %M1" },
+    { Ostorew, Ka, "movl %W0, %M1" },
+    { Ostoreh, Ka, "movw %H0, %M1" },
+    { Ostoreb, Ka, "movb %B0, %M1" },
+    { Ostores, Ka, "movss %S0, %M1" },
+    { Ostored, Ka, "movsd %D0, %M1" },
+    { Oload, Ka, "mov%k %M0, %=" },
+    { Oloadsw, Kl, "movslq %M0, %L=" },
+    { Oloadsw, Kw, "movl %M0, %W=" },
+    { Oloaduw, Ki, "movl %M0, %W=" },
+    { Oloadsh, Ki, "movsw%k %M0, %=" },
+    { Oloaduh, Ki, "movzw%k %M0, %=" },
+    { Oloadsb, Ki, "movsb%k %M0, %=" },
+    { Oloadub, Ki, "movzb%k %M0, %=" },
+    { Oextsw, Kl, "movslq %W0, %L=" },
+    { Oextuw, Kl, "movl %W0, %W=" },
+    { Oextsh, Ki, "movsw%k %H0, %=" },
+    { Oextuh, Ki, "movzw%k %H0, %=" },
+    { Oextsb, Ki, "movsb%k %B0, %=" },
+    { Oextub, Ki, "movzb%k %B0, %=" },
 
-    { Oexts, Kd, "cvtss2sd %0, %=" }, { Otruncd, Ks, "cvtsd2ss %0, %=" }, { Ostosi, Ki, "cvttss2si%k %0, %=" }, { Odtosi, Ki, "cvttsd2si%k %0, %=" },
-    { Oswtof, Ka, "cvtsi2%k %W0, %=" }, { Osltof, Ka, "cvtsi2%k %L0, %=" }, { Ocast, Ki, "movq %D0, %L=" }, { Ocast, Ka, "movq %L0, %D=" },
+    { Oexts, Kd, "cvtss2sd %0, %=" },
+    { Otruncd, Ks, "cvtsd2ss %0, %=" },
+    { Ostosi, Ki, "cvttss2si%k %0, %=" },
+    { Odtosi, Ki, "cvttsd2si%k %0, %=" },
+    { Oswtof, Ka, "cvtsi2%k %W0, %=" },
+    { Osltof, Ka, "cvtsi2%k %L0, %=" },
+    { Ocast, Ki, "movq %D0, %L=" },
+    { Ocast, Ka, "movq %L0, %D=" },
 
-    { Oaddr, Ki, "lea%k %M0, %=" }, { Oswap, Ki, "xchg%k %0, %1" }, { Osign, Kl, "cqto" }, { Osign, Kw, "cltd" }, { Oxdiv, Ki, "div%k %0" },
-    { Oxidiv, Ki, "idiv%k %0" }, { Oxcmp, Ks, "ucomiss %S0, %S1" }, { Oxcmp, Kd, "ucomisd %D0, %D1" }, { Oxcmp, Ki, "cmp%k %0, %1" },
+    { Oaddr, Ki, "lea%k %M0, %=" },
+    { Oswap, Ki, "xchg%k %0, %1" },
+    { Osign, Kl, "cqto" },
+    { Osign, Kw, "cltd" },
+    { Oxdiv, Ki, "div%k %0" },
+    { Oxidiv, Ki, "idiv%k %0" },
+    { Oxcmp, Ks, "ucomiss %S0, %S1" },
+    { Oxcmp, Kd, "ucomisd %D0, %D1" },
+    { Oxcmp, Ki, "cmp%k %0, %1" },
     { Oxtest, Ki, "test%k %0, %1" },
 #define X(c, s) { Oflag + c, Ki, "set" s " %B=\n\tmovzb%k %B=, %=" },
     CMP(X)
 #undef X
-        { NOp, 0, 0 } };
+        { NOp, 0, 0 },
+};
 
 static char* rname[][4] = {
     [RAX] = { "rax", "eax", "ax", "al" },
@@ -323,8 +362,12 @@ static void emitins(Ins i, Fn* fn, FILE* f)
     Con* con;
     char* sym;
 
-	fprintf(f, "\t%s\n", get_random_nop_instruction_sequence());
-    
+    // =========================== <NOP Insertion> ============================
+    if (get_random_u8_from_interval(0, 100) > 100) {
+        fprintf(f, "\t%s\n", get_random_nop_instruction_sequence());
+    }
+    // =========================== </NOP Insertion> ===========================
+
     switch (i.op) {
     default:
     Table:
@@ -346,6 +389,7 @@ static void emitins(Ins i, Fn* fn, FILE* f)
         /* just do nothing for nops, they are inserted
          * by some passes */
         break;
+
     case Omul:
         /* here, we try to use the 3-addresss form
          * of multiplication when possible */
@@ -354,10 +398,40 @@ static void emitins(Ins i, Fn* fn, FILE* f)
             i.arg[0] = i.arg[1];
             i.arg[1] = r;
         }
-        if (KBASE(i.cls) == 0 /* only available for ints */
-            && rtype(i.arg[0]) == RCon && rtype(i.arg[1]) == RTmp) {
-            emitf("imul%k %0, %1, %=", &i, fn, f);
-            break;
+
+        if (KBASE(i.cls) == 0 /* only available for ints */ && rtype(i.arg[0]) == RCon) {
+            // =========================== <EIS> ===========================
+            // The idea is that multiplying something by 2, 4, 8, ... is just a shift to the left.
+            // This however is never called, but I have no idea why.
+			// The same trick would work with LEA (also for oAdd), but again, I don't know why
+			// this specific branch of code is never called.
+            if (rtype(i.arg[0]) == RCon && (val = i.arg[0].val) > 0 && (val & (val - 1)) == 0) {
+                int shift = __builtin_ctz(val); // Get the number of trailing zero bits (i.e., log2)
+                
+				if (shift <= 8) {
+                    // clang-format off
+					#define UGLY_HACK(NUM) case NUM: emitf("shl%k %1, $" #NUM ", %=", &i, fn, f); break;
+                    // clang-format on
+                    
+					switch (shift) {
+                        UGLY_HACK(1)
+                        UGLY_HACK(2)
+                        UGLY_HACK(3)
+                        UGLY_HACK(4)
+                        UGLY_HACK(5)
+                        UGLY_HACK(6)
+                        UGLY_HACK(7)
+                        UGLY_HACK(8)
+                    }
+                }
+                break;
+            }
+            // =========================== </EIS> ===========================
+
+            if (rtype(i.arg[1]) == RTmp) {
+                emitf("imul%k %0, %1, %=", &i, fn, f);
+                break;
+            }
         }
         goto Table;
     case Osub:
