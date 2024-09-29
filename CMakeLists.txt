@@ -25,6 +25,8 @@ set(SRC_ALL ${COMM_SRC} ${AMD64_SRC} ${ARM64_SRC} ${RV64_SRC})
 
 # Add executable target
 add_executable(qbe ${SRC_ALL})
+target_compile_options(qbe PRIVATE -fsanitize=address)
+target_link_options(qbe PRIVATE -fsanitize=address)
 
 add_subdirectory(minic)
 
