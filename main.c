@@ -51,6 +51,9 @@ void emit_functions(void* function)
 {
     Fn* fn = function;
 
+    // TODO: This is the point where we could inline or split a function.
+    // I have honestly no idea how this works in QBE though.
+
     uint n;
 
     if (dbg)
