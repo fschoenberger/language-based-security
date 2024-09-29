@@ -447,6 +447,11 @@ static void emitins(Ins i, Fn* fn, FILE* f)
             }
         }
         goto Table;
+	case Oadd:
+		// =========================== <EIS> ===========================
+		// TODO: We could randomly replace ADD x with SUB -x.
+		// =========================== </EIS> ===========================
+
     case Osub:
         /* we have to use the negation trick to handle
          * some 3-address subtractions */
