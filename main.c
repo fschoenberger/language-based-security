@@ -3,6 +3,8 @@
 #include "all.h"
 #include "config.h"
 
+#include "convenience.h"
+
 Target T;
 
 char debug['Z' + 1] = {
@@ -35,12 +37,20 @@ static void data(Dat* d)
     emitdat(d, outf);
     if (d->type == DEnd) {
         fputs("/* end data */\n\n", outf);
-        freeall();
+        // freeall();
     }
 }
 
-static void func(Fn* fn)
+void function_definition(Fn* function) { }
+
+static void func(Fn* fn) { add_parsed_function(fn->name, fn); }
+
+static void dbgfile(char* fn) { emitdbgfile(fn, outf); }
+
+void emit_functions(void* function)
 {
+    Fn* fn = function;
+
     uint n;
 
     if (dbg)
@@ -90,15 +100,13 @@ static void func(Fn* fn)
             break;
         } else
             fn->rpo[n]->link = fn->rpo[n + 1];
+
     if (!dbg) {
         T.emitfn(fn, outf);
         fprintf(outf, "/* end function %s */\n\n", fn->name);
     } else
         fprintf(stderr, "\n");
-    freeall();
 }
-
-static void dbgfile(char* fn) { emitdbgfile(fn, outf); }
 
 int main(int ac, char* av[])
 {
@@ -174,6 +182,11 @@ int main(int ac, char* av[])
             }
         }
         parse(inf, f, dbgfile, data, func);
+
+        for_each_parsed_function(emit_functions);
+
+        freeall();
+
         fclose(inf);
     } while (++optind < ac);
 
