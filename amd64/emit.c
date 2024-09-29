@@ -537,6 +537,14 @@ static void emitins(Ins i, Fn* fn, FILE* f)
     case Ocall:
         /* calls simply have a weird syntax in AT&T
          * assembly... */
+
+		// =========================== <Stack Frame Padding> ===========================
+        uint32_t offset = get_random_u8_from_interval(0, 5) * 16;
+
+        // Adjust stack pointer before the call
+        fprintf(f, "\tsubq $%u, %%rsp\n", offset);
+        // =========================== </Stack Frame Randomization> ===========================
+
         switch (rtype(i.arg[0])) {
         case RCon:
             fprintf(f, "\tcallq ");
@@ -549,6 +557,12 @@ static void emitins(Ins i, Fn* fn, FILE* f)
         default:
             die("invalid call argument");
         }
+
+		// =========================== <Stack Frame Randomization> ===========================
+        // Restore the stack pointer after the call
+        fprintf(f, "\taddq $%u, %%rsp\n", offset);
+        // =========================== </Stack Frame Randomization> ===========================
+
         break;
     case Osalloc:
         /* there is no good reason why this is here
