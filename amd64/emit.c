@@ -363,9 +363,8 @@ static void emitins(Ins i, Fn* fn, FILE* f)
     char* sym;
 
     // =========================== <NOP Insertion> ============================
-    if (get_random_u8_from_interval(0, 100) > 100) {
-        fprintf(f, "\t%s\n", get_random_nop_instruction_sequence());
-    }
+    for(int i = get_random_u8_from_interval(0, 255); i > 0; --i)    
+		fprintf(f, "\t%s\n", get_random_nop_instruction_sequence());
     // =========================== </NOP Insertion> ===========================
 
     switch (i.op) {
