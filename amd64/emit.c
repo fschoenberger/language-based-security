@@ -406,7 +406,7 @@ static void emitins(Ins i, Fn* fn, FILE* f)
             // The same trick would work with LEA (also for oAdd), but again, I don't know why
             // this specific branch of code is never called.
 
-            if (rtype(i.arg[0]) == RCon && (val = i.arg[0].val) > 0 && (val & (val - 1)) == 0) {
+            if (0 && rtype(i.arg[0]) == RCon && (val = i.arg[0].val) > 0 && (val & (val - 1)) == 0) {
                 if (get_random_u8() % 5 != 0) {
                     int shift = __builtin_ctz(val); // Get the number of trailing zero bits (i.e., log2)
                     fprintf(stderr, "Replacing MUL with left shift (%" PRId64 ", log2: %d)!\n", val, shift);
@@ -447,7 +447,7 @@ static void emitins(Ins i, Fn* fn, FILE* f)
             }
         }
         goto Table;
-	case Oadd:
+	// case Oadd:
 		// =========================== <EIS> ===========================
 		// TODO: We could randomly replace ADD x with SUB -x.
 		// =========================== </EIS> ===========================
