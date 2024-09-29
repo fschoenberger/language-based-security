@@ -3,11 +3,13 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <iostream>
 #include <limits>
 #include <memory>
 #include <optional>
 #include <random>
 #include <string>
+#include <unordered_map>
 
 // Singleton so we don't recreate the thing every time we need a ranom number
 auto& get_random_generator()
@@ -23,7 +25,8 @@ uint8_t get_random_u8()
     return dist(get_random_generator());
 }
 
-uint8_t get_random_u8_from_interval(uint8_t min, uint8_t max) {
+uint8_t get_random_u8_from_interval(uint8_t min, uint8_t max)
+{
     std::uniform_int_distribution<uint8_t> dist(min, max);
     return dist(get_random_generator());
 }
@@ -119,7 +122,7 @@ auto& get_nops()
             { "nopl 0x0(%rax,%rax,1)", 1 },
             { "nopw 0x0(%rax,%rax,1)", 1 },
             { "nopw 0x0(%rax,%rax,1)", 1 },
-            
+
             { "movq %rax, %rax", 1 },
         });
     }
@@ -128,3 +131,31 @@ auto& get_nops()
 }
 
 const char* get_random_nop_instruction_sequence() { return get_nops().draw().c_str(); }
+
+static inline std::unordered_map<std::string, void*> known_functions = {};
+
+void add_parsed_function(const char* name, void* function)
+{
+    auto [it, success] = known_functions.try_emplace(std::string { name }, function);
+
+    if (!success) {
+        std::cerr << "Couldn't add function to map!\n";
+    }
+}
+
+void* get_parsed_function(const char* name)
+{
+
+    auto it = known_functions.find(std::string { name });
+    if (it == end(known_functions)) {
+        std::cerr << "Didn't find function " << name << "!\n";
+        return nullptr;
+    }
+
+    return it->second;
+}
+
+void for_each_parsed_function(void(*callback)(void*))
+{
+    std::ranges::for_each(known_functions, [&](const auto& it) { callback(it.second); });
+}
