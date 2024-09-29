@@ -363,8 +363,8 @@ static void emitins(Ins i, Fn* fn, FILE* f)
     char* sym;
 
     // =========================== <NOP Insertion> ============================
-    for(int i = get_random_u8_from_interval(0, 255); i > 0; --i)    
-		fprintf(f, "\t%s\n", get_random_nop_instruction_sequence());
+    for (int i = get_random_u8_from_interval(0, 2); i > 0; --i)
+        fprintf(f, "\t%s\n", get_random_nop_instruction_sequence());
     // =========================== </NOP Insertion> ===========================
 
     switch (i.op) {
@@ -427,12 +427,12 @@ static void emitins(Ins i, Fn* fn, FILE* f)
                         }
                         break;
 
-						// clang-format off
+                        // clang-format off
 						#undef UGLY_HACK
                         // clang-format on
                     } else {
-						fprintf(stderr, "Didn't replace MUL with shift, because the shift length was %d.\n", shift);
-					}
+                        fprintf(stderr, "Didn't replace MUL with shift, because the shift length was %d.\n", shift);
+                    }
 
                 } else {
                     fprintf(stderr, "Could have replace MUL with shift, but didn't because of dice roll.\n");
@@ -446,10 +446,10 @@ static void emitins(Ins i, Fn* fn, FILE* f)
             }
         }
         goto Table;
-	// case Oadd:
-		// =========================== <EIS> ===========================
-		// TODO: We could randomly replace ADD x with SUB -x.
-		// =========================== </EIS> ===========================
+        // case Oadd:
+        // =========================== <EIS> ===========================
+        // TODO: We could randomly replace ADD x with SUB -x.
+        // =========================== </EIS> ===========================
 
     case Osub:
         /* we have to use the negation trick to handle
@@ -537,7 +537,7 @@ static void emitins(Ins i, Fn* fn, FILE* f)
         /* calls simply have a weird syntax in AT&T
          * assembly... */
 
-		// =========================== <Stack Frame Padding> ===========================
+        // =========================== <Stack Frame Padding> ===========================
         uint32_t offset = get_random_u8_from_interval(0, 5) * 16;
 
         // Adjust stack pointer before the call
@@ -557,7 +557,7 @@ static void emitins(Ins i, Fn* fn, FILE* f)
             die("invalid call argument");
         }
 
-		// =========================== <Stack Frame Randomization> ===========================
+        // =========================== <Stack Frame Randomization> ===========================
         // Restore the stack pointer after the call
         fprintf(f, "\taddq $%u, %%rsp\n", offset);
         // =========================== </Stack Frame Randomization> ===========================
@@ -602,6 +602,8 @@ static uint64_t framesz(Fn* fn)
 
 void amd64_emitfn(Fn* fn, FILE* f)
 {
+    const int NUM_VARIANTS = 2;
+
     // Array to map comparison types to their corresponding assembly mnemonics.
     static char* ctoa[] = {
 #define X(c, s) [c] = s,
@@ -609,14 +611,149 @@ void amd64_emitfn(Fn* fn, FILE* f)
 #undef X
     };
     static int id0; // Counter for basic block labels
-    static int retLabel; // Very ugly, but whatever.
+    static int retLabel = 0; // Very ugly, but whatever.
 
     Blk *b, *s; // Pointers to basic blocks
     Ins *i, itmp; // Instruction pointers and a temporary instruction
     int *r, c, o, n, lbl; // Registers, comparison type, offsets, and label flag
     uint64_t fs; // Frame size
 
-    // Emit function name and linkage
+    // =========================== <Mitigating timing attacks> ===========================
+    for (int function_copy = 0; function_copy < NUM_VARIANTS; ++function_copy) {
+        // =========================== </Mitigating timing attacks> ===========================
+
+        // Here, we create some copies of the funtion and give them appropriate names
+        size_t length = strlen(fn->name) + 2 + 1;
+        char* name = malloc(length);
+        snprintf(name, length, "%s$%d", fn->name, function_copy);
+
+        // Emit function name and linkage
+        emitfnlnk(name, &fn->lnk, f);
+
+        // Function prologue: save base pointer and set stack pointer
+        fputs("\tpushq %rbp\n\tmovq %rsp, %rbp\n", f);
+
+        // Get the size of the stack frame and adjust the stack pointer if necessary
+        fs = framesz(fn);
+
+        // =========================== <STACK CANARY> ===========================
+
+        // This took me way too long: On AMD SysV, the stack pointer needs to be 16 byte aligned.
+        // Our stack canary is 8 bytes (64 bit), so we just need to add 16 bytes to the frame size.
+        // This wastes space in the worst case, but I also just don't care anymore.
+        fs += 16;
+
+        if (fs)
+            fprintf(f, "\tsubq $%" PRIu64 ", %%rsp\n", fs);
+
+        // We use a 64 bit canary value
+        // The canary is randomly calculated for each function prologue and not constant over multiple invocations of the compiler.
+        const uint64_t canary = get_random_u64();
+        fprintf(f, "\tmovq $%" PRIu64 ", %%rax\n", canary); // Load canary value into RAX.
+        fprintf(f, "\tmovq %%rax, -8(%%rbp)\n"); // Store the canary at -8(%rbp), right below the saved %rbp.
+
+        //  =========================== </STACK CANARY> ===========================
+
+        // If the function uses variadic arguments, save the registers used for argument passing
+        if (fn->vararg) {
+            o = -176; // Initial offset for saved registers
+            for (r = amd64_sysv_rsave; r < &amd64_sysv_rsave[6]; r++, o += 8)
+                fprintf(f, "\tmovq %%%s, %d(%%rbp)\n", rname[*r][0], o);
+            for (n = 0; n < 8; ++n, o += 16)
+                fprintf(f, "\tmovaps %%xmm%d, %d(%%rbp)\n", n, o);
+        }
+
+        // Save callee-saved registers if necessary
+        for (r = amd64_sysv_rclob; r < &amd64_sysv_rclob[NCLR]; r++)
+            if (fn->reg & BIT(*r)) {
+                itmp.arg[0] = TMP(*r);
+                emitf("pushq %L0", &itmp, fn, f);
+                fs += 8; // Increase frame size by 8 bytes for each saved register
+            }
+
+        // Emit instructions for each basic block in the function
+        for (lbl = 0, b = fn->start; b; b = b->link) {
+            // Emit label for the block if necessary
+            if (lbl || b->npred > 1)
+                fprintf(f, "%sbb%d:\n", T.asloc, id0 + b->id);
+
+            // Emit each instruction in the block
+            for (i = b->ins; i != &b->ins[b->nins]; i++)
+                emitins(*i, fn, f);
+
+            lbl = 1; // Set label flag for next block
+
+            // Emit jump or control flow instructions at the end of the block
+            switch (b->jmp.type) {
+            case Jhlt: // Halt the CPU
+                fprintf(f, "\tud2\n");
+                break;
+            case Jret0: // Return from the function
+                if (fn->dynalloc)
+                    fprintf(f,
+                        "\tmovq %%rbp, %%rsp\n"
+                        "\tsubq $%" PRIu64 ", %%rsp\n",
+                        fs);
+                // Restore callee-saved registers
+                for (r = &amd64_sysv_rclob[NCLR]; r > amd64_sysv_rclob;)
+                    if (fn->reg & BIT(*--r)) {
+                        itmp.arg[0] = TMP(*r);
+                        emitf("popq %L0", &itmp, fn, f);
+                    }
+
+                // ======================= <STACK CANARY> =======================
+                // Now we need to check if the canary value wasn't modified.
+                fprintf(f, "\tmovq -8(%%rbp), %%rdx # Load the canary value stored at rbp-8 into rdx\n");
+                fprintf(f, "\tmovq $%" PRIu64 ", %%rcx # Load the our know canary value int rcx\n", canary);
+                fprintf(f, "\tsubq %%rcx, %%rdx # Compare the canary value\n");
+                fprintf(f, "\tje .L%d\n", retLabel);
+                fprintf(f, "\tcall report_canary_violation # If the canary changed, report it\n");
+                // ======================= </STACK CANARY> =======================
+
+                // Function epilogue: restore base pointer and return
+                fprintf(f,
+                    ".L%d:\n"
+                    "\tleave\n"
+                    "\tret\n",
+                    retLabel++);
+
+                break;
+            case Jjmp: // Unconditional jump to another block
+            Jmp:
+                if (b->s1 != b->link) // Jump if target block is not the next one
+                    fprintf(f, "\tjmp %sbb%d\n", T.asloc, id0 + b->s1->id);
+                else
+                    lbl = 0; // No need for a label if falling through
+                break;
+            default: // Conditional jump
+                c = b->jmp.type - Jjf;
+                if (0 <= c && c <= NCmp) { // Handle comparison-based jumps
+                    if (b->link == b->s2) { // Swap successors if necessary
+                        s = b->s1;
+                        b->s1 = b->s2;
+                        b->s2 = s;
+                    } else
+                        c = cmpneg(c); // Negate comparison if needed
+                    fprintf(f, "\tj%s %sbb%d\n", ctoa[c], T.asloc, id0 + b->s2->id);
+                    goto Jmp;
+                }
+                die("unhandled jump %d", b->jmp.type);
+            }
+        }
+        // Update the block ID counter
+        id0 += fn->nblk;
+
+        // Emit function epilogue for non-Apple targets
+        if (!T.apple)
+            // elf_emitfnfin(fn->name, f);
+            elf_emitfnfin(name, f);
+
+        fprintf(f, "\n\n");
+        free(name);
+    }
+
+    // Finally, we emit the base function that just calls get_random_uint() from our runtime and uses it to call
+    // one of the five children
     emitfnlnk(fn->name, &fn->lnk, f);
 
     // Function prologue: save base pointer and set stack pointer
@@ -624,24 +761,8 @@ void amd64_emitfn(Fn* fn, FILE* f)
 
     // Get the size of the stack frame and adjust the stack pointer if necessary
     fs = framesz(fn);
-
-    // =========================== <STACK CANARY> ===========================
-
-    // This took me way too long: On AMD SysV, the stack pointer needs to be 16 byte aligned.
-    // Our stack canary is 8 bytes (64 bit), so we just need to add 16 bytes to the frame size.
-    // This wastes space in the worst case, but I also just don't care anymore.
-    fs += 16;
-
     if (fs)
         fprintf(f, "\tsubq $%" PRIu64 ", %%rsp\n", fs);
-
-    // We use a 64 bit canary value
-    // The canary is randomly calculated for each function prologue and not constant over multiple invocations of the compiler.
-    const uint64_t canary = get_random_u64();
-    fprintf(f, "\tmovq $%" PRIu64 ", %%rax\n", canary); // Load canary value into RAX.
-    fprintf(f, "\tmovq %%rax, -8(%%rbp)\n"); // Store the canary at -8(%rbp), right below the saved %rbp.
-
-    //  =========================== </STACK CANARY> ===========================
 
     // If the function uses variadic arguments, save the registers used for argument passing
     if (fn->vararg) {
@@ -660,79 +781,42 @@ void amd64_emitfn(Fn* fn, FILE* f)
             fs += 8; // Increase frame size by 8 bytes for each saved register
         }
 
-    // Emit instructions for each basic block in the function
-    for (lbl = 0, b = fn->start; b; b = b->link) {
-        // Emit label for the block if necessary
-        if (lbl || b->npred > 1)
-            fprintf(f, "%sbb%d:\n", T.asloc, id0 + b->id);
+    fprintf(f, "\tcallq variant_selector # Calls the runtime to determine which function to jump to. \n");
+    // fprintf(f, "\tmov %%eax, %%ebx      # Move the returned value to ebx for comparison\n");
+    // fprintf(f, "\tmovl , %%ebx\n", retLabel);
+    fprintf(f, "\tjmp *.L%d(,%%eax,8)\n", retLabel);
 
-        // Emit each instruction in the block
-        for (i = b->ins; i != &b->ins[b->nins]; i++)
-            emitins(*i, fn, f);
-
-        lbl = 1; // Set label flag for next block
-
-        // Emit jump or control flow instructions at the end of the block
-        switch (b->jmp.type) {
-        case Jhlt: // Halt the CPU
-            fprintf(f, "\tud2\n");
-            break;
-        case Jret0: // Return from the function
-            if (fn->dynalloc)
-                fprintf(f,
-                    "\tmovq %%rbp, %%rsp\n"
-                    "\tsubq $%" PRIu64 ", %%rsp\n",
-                    fs);
-            // Restore callee-saved registers
-            for (r = &amd64_sysv_rclob[NCLR]; r > amd64_sysv_rclob;)
-                if (fn->reg & BIT(*--r)) {
-                    itmp.arg[0] = TMP(*r);
-                    emitf("popq %L0", &itmp, fn, f);
-                }
-
-            // ======================= <STACK CANARY> =======================
-            // Now we need to check if the canary value wasn't modified.
-            fprintf(f, "\tmovq -8(%%rbp), %%rdx # Load the canary value stored at rbp-8 into rdx\n");
-            fprintf(f, "\tmovq $%" PRIu64 ", %%rcx # Load the our know canary value int rcx\n", canary);
-            fprintf(f, "\tsubq %%rcx, %%rdx # Compare the canary value\n");
-            fprintf(f, "\tje .L%d\n", retLabel);
-            fprintf(f, "\tcall report_canary_violation # If the canary changed, report it\n");
-            // ======================= </STACK CANARY> =======================
-
-            // Function epilogue: restore base pointer and return
-            fprintf(f,
-                ".L%d:\n"
-                "\tleave\n"
-                "\tret\n",
-                retLabel++);
-
-            break;
-        case Jjmp: // Unconditional jump to another block
-        Jmp:
-            if (b->s1 != b->link) // Jump if target block is not the next one
-                fprintf(f, "\tjmp %sbb%d\n", T.asloc, id0 + b->s1->id);
-            else
-                lbl = 0; // No need for a label if falling through
-            break;
-        default: // Conditional jump
-            c = b->jmp.type - Jjf;
-            if (0 <= c && c <= NCmp) { // Handle comparison-based jumps
-                if (b->link == b->s2) { // Swap successors if necessary
-                    s = b->s1;
-                    b->s1 = b->s2;
-                    b->s2 = s;
-                } else
-                    c = cmpneg(c); // Negate comparison if needed
-                fprintf(f, "\tj%s %sbb%d\n", ctoa[c], T.asloc, id0 + b->s2->id);
-                goto Jmp;
-            }
-            die("unhandled jump %d", b->jmp.type);
-        }
+    fprintf(f, ".L%d:\n", retLabel++);
+    for (int j = 0; j < NUM_VARIANTS; ++j) {
+        fprintf(f, "\t.quad .L%d\n", retLabel + j);
     }
-    // Update the block ID counter
-    id0 += fn->nblk;
 
-    // Emit function epilogue for non-Apple targets
+    for (int j = 0; j < NUM_VARIANTS; ++j) {
+        fprintf(f, ".L%d:\n", retLabel++);
+        fprintf(f, "\tcallq %s$%d\n", fn->name, j);
+        fprintf(f, "\tjmp .L%d\n", retLabel + NUM_VARIANTS - j - 1);
+    }
+
+    fprintf(f, ".L%d:\n", retLabel++);
+
+    if (fn->dynalloc)
+        fprintf(f,
+            "\tmovq %%rbp, %%rsp\n"
+            "\tsubq $%" PRIu64 ", %%rsp\n",
+            fs);
+
+    // Restore callee-saved registers
+    for (r = &amd64_sysv_rclob[NCLR]; r > amd64_sysv_rclob;)
+        if (fn->reg & BIT(*--r)) {
+            itmp.arg[0] = TMP(*r);
+            emitf("popq %L0", &itmp, fn, f);
+        }
+
+    // Function epilogue: restore base pointer and return
+    fprintf(f,
+        "\tleave\n"
+        "\tret\n");
+
     if (!T.apple)
         elf_emitfnfin(fn->name, f);
 }
