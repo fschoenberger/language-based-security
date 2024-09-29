@@ -109,7 +109,7 @@ auto& get_nops()
 
     if (!ret) {
         ret = std::unique_ptr<ProbabilityCollection<std::string>>(new ProbabilityCollection<std::string> {
-            { "# NOP omitted", 10},
+            // { "# NOP omitted", 10},
             { "nop", 1 },
             { "nopl (%rax)", 1 },
             { "nopw 0x0(%rax)", 1 },

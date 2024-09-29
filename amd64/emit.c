@@ -403,28 +403,41 @@ static void emitins(Ins i, Fn* fn, FILE* f)
             // =========================== <EIS> ===========================
             // The idea is that multiplying something by 2, 4, 8, ... is just a shift to the left.
             // This however is never called, but I have no idea why.
-			// The same trick would work with LEA (also for oAdd), but again, I don't know why
-			// this specific branch of code is never called.
+            // The same trick would work with LEA (also for oAdd), but again, I don't know why
+            // this specific branch of code is never called.
+
             if (rtype(i.arg[0]) == RCon && (val = i.arg[0].val) > 0 && (val & (val - 1)) == 0) {
-                int shift = __builtin_ctz(val); // Get the number of trailing zero bits (i.e., log2)
-                
-				if (shift <= 8) {
-                    // clang-format off
-					#define UGLY_HACK(NUM) case NUM: emitf("shl%k %1, $" #NUM ", %=", &i, fn, f); break;
-                    // clang-format on
-                    
-					switch (shift) {
-                        UGLY_HACK(1)
-                        UGLY_HACK(2)
-                        UGLY_HACK(3)
-                        UGLY_HACK(4)
-                        UGLY_HACK(5)
-                        UGLY_HACK(6)
-                        UGLY_HACK(7)
-                        UGLY_HACK(8)
-                    }
+                if (get_random_u8() % 5 != 0) {
+                    int shift = __builtin_ctz(val); // Get the number of trailing zero bits (i.e., log2)
+                    fprintf(stderr, "Replacing MUL with left shift (%" PRId64 ", log2: %d)!\n", val, shift);
+
+                    if (shift <= 8) {
+                        // clang-format off
+						#define UGLY_HACK(NUM) case NUM: emitf("sal%k $" #NUM ", %=", &i, fn, f); break;
+                        // clang-format on
+
+                        switch (shift) {
+                            UGLY_HACK(1)
+                            UGLY_HACK(2)
+                            UGLY_HACK(3)
+                            UGLY_HACK(4)
+                            UGLY_HACK(5)
+                            UGLY_HACK(6)
+                            UGLY_HACK(7)
+                            UGLY_HACK(8)
+                        }
+                        break;
+
+						// clang-format off
+						#undef UGLY_HACK
+                        // clang-format on
+                    } else {
+						fprintf(stderr, "Didn't replace MUL with shift, because the shift length was %d.\n", shift);
+					}
+
+                } else {
+                    fprintf(stderr, "Could have replace MUL with shift, but didn't because of dice roll.\n");
                 }
-                break;
             }
             // =========================== </EIS> ===========================
 
